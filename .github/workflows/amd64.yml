@@ -19,7 +19,20 @@ jobs:
       run: |
           docker system prune -a -f
           docker volume prune -f
-          ls -l
+          # 1. 停止所有运行中的Docker容器（避免占用资源）
+          docker stop $(docker ps -aq) || true
+          # 2. 删除所有Docker容器、镜像、网络、构建缓存、卷（最强清理）
+          docker system prune -a -f --volumes
+          # 3. 清理Docker构建缓存的额外内容
+          docker builder prune -a -f
+          # 4. 删除GitHub Runner预安装的大文件（Android SDK、dotnet、miniconda等）
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL /opt/miniconda || true
+          # 5. 清理系统无用包和缓存
+          sudo apt-get autoremove -y && sudo apt-get clean -y && sudo apt-get autoclean -y
+          # 6. 删除系统临时文件
+          sudo rm -rf /tmp/* /var/tmp/* || true
+          # 查看磁盘使用情况（方便调试）
+          df -h
     - name: Pull Docker Images and Package
       run: |
         images="${{ github.event.inputs.docker_images }}"
